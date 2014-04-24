@@ -2,11 +2,11 @@ import serial
 
 # ========================================================
 #	
-# SerialManager.py
+# bitstreamer.py
 #
-# This class abstracts the base communications layer in 
-# desktop application, so that we can easily inject debug
-# functionality later on.
+# This module provides a low level serial translator 
+# which is highly customizable for simple serial
+# communications applications.
 #
 # =========================================================
 
@@ -32,7 +32,7 @@ class bitstreamer(Thread):
 	# -------------------------------------------------------
 	# Constructor
 	# -------------------------------------------------------
-	def __init__(self, debug_mode=False, hardware_mode='clip', OPTIONS={}, BAUD_RATE=9600, SERIAL_PORT='/dev/ttyS6'):
+	def __init__(self, debug_mode=False, OPTIONS={}, BAUD_RATE=9600, SERIAL_PORT='/dev/ttyS6'):
 		Thread.__init__(self);
 		self.__readyFlag = False
 
@@ -46,8 +46,6 @@ class bitstreamer(Thread):
 		self.sensor_values = {}
 		self.OPTIONS = OPTIONS
 		self.SERIAL_PORT = SERIAL_PORT
-		self.hardware_mode = hardware_mode
-		self.verbose_print("our hardware mode is: " + str(hardware_mode))
 		self.values_index = self.getValuesIndex()
 		self.unpack_schema = self.__genUnpackSchema()
 		self.sample_period_s = 0.025
