@@ -23,7 +23,6 @@ from threading import Thread
 from datetime import datetime
 
 class BitStreamer(Thread):
-	
 	# ==========================================================
 	# Public Interface
 	# ==========================================================
@@ -36,26 +35,29 @@ class BitStreamer(Thread):
 
 		self.__readyFlag = False
 
-		self.verbose = False			
-		self.echo = False				
+		self.__verbose = False			
+		self.__echo = False				
+
+		# Corrupted packets - don't match our packet length, but have the correct header
+		# Incorrect packets - don't match anything at all.
+		self.corrupted_packets = 0;
+		self.incorrect_packets = 0;
+		self.total_packets = 0;
 
 		self.sensor_values = {}
 		self.options = options
 		self.serial_port = serial_port
 		self.values_index = self.getValuesIndex()
 		self.unpack_schema = self.__genUnpackSchema()
-		self.sample_period_s = 0.025
 
-		self.__verbose_print("Expected packet size: " + str(self.getPacketSize(self.unpack_schema)))
+		self.packet_config = self.loadPacketConfig()
 
 		self.last_sample_time = self.getSeconds();
 
 		formatted_time = datetime.now().strftime('%Y%m%d-%H-%M-%S')
 
-		## Setting debug mode disables the input
-		## and generates an internal signal
+		## Setting debug mode disables the serial input and generates an internal signal
 		self.debug_mode = debug_mode
-
 		if self.debug_mode == True:
 			self.__verbose_print("Warning: Debug Mode Enabled.")
 		else:
@@ -64,8 +66,6 @@ class BitStreamer(Thread):
 	# Returns if the driver is ready or not.
 	def isReady(self,):
 		return self.__readyFlag
-
-
 
 	# Parses an unpack schema and spits out the size.
 	def getPacketSize(self, unpack_schema):
@@ -80,9 +80,20 @@ class BitStreamer(Thread):
 				size += 4
 		return size
 
+	def loadPacketConfig(self):
+		self.packet_config = {}
+		with open('packet_kay.yaml') as config_file
+			self.packet_config = yaml.load(config_file)
 
-	# Grab the index of the packet from a yaml file.
-	def getValuesIndex(self):
+	def getPacketIndex(self):
+		""" 
+		Sets the packet index (useful for later), when we're 
+		iterating through things.
+		"""
+		pass
+
+		"""
+		OLD CODE
 		self.packet_key = {}
 		try:
 			file_name = "packet_key.yaml"
@@ -92,39 +103,60 @@ class BitStreamer(Thread):
 			print "CONFIG ERROR: no packet key detected."
 		values_index = ['packet_header','data_1', 'data_2', 'checksum', 'packet_ender']
 		return values_index
+		"""
 
-	# ----------------------------------------------------	
-	#
-	# Returns how many seconds its been since the last sample.
-	#
-	# ----------------------------------------------------	
 	def secondsSinceLastSample(self):
+		"""
+		Returns how long it's been since the last sample.
+		"""
 		return( self.getSeconds() - self.last_sample_time).seconds
 
-	# ----------------------------------------------------	
-	#
-	# Constantly poll for data in a while loop.
-	#
-	# ----------------------------------------------------
 	def poll(self):
+		""" 
+		Continuously poll for new data.
+		"""
 		while True:
 			data_raw = self.__readLine()
-			self.verbose_print("RECV: New line!")
-			if self.echo:
-				print data_raw,
+			self.__verbose_print("RECV: New line!")
+			self.total_packets += 1
 
 			if('$' in data_raw):
-				self.sensor_values = self.__decode(data_raw)
-				self.setSampleTime();
-				self.__readyFlag = True
+				# If our packet header matches, decode it
+				try:
+					self.sensor_values = self.__decode(data_raw)
+					self.setSampleTime();
+					self.__readyFlag = True
+				except:
+					# TODO: Log to a file
+					self.corrupted_packets += 1
+				finally:
+					pass
+			else:
+				# Else do nothing
+				self.incorrect_packets += 1
+				pass
 
-				self.device_logger.setKeys(self.sensor_values.keys())
-				if('csv_logging' in self.OPTIONS):
-					if(self.OPTIONS['csv_logging']):
-						self.device_logger.writeLog(self.sensor_values)
+	# Poll using a csv file.
+	def poll_debug_csv(self, debug_file='debug_profile.csv'):
+		csv_reader = CSVIterator(debug_file)
+		while True:
+			self.sensor_values = csv_reader.get_data()
+			self.__readyFlag = True
 
-	# returns if a option flag is true or not 
+			time.sleep(self.sample_period_s)
+			self.setSampleTime()
+
+	def checkCSV(self):
+		""" 
+		Checks the csv file to see if it matches our packet descriptor
+		"""
+		pass
+
 	def isFlagTrue(self, option_flag):
+		""" 
+		Returns true if an option exists in the options dictionary, 
+		as well if it is actually 'True' itself.
+		"""
 		if( option_flag in self.OPTIONS):
 			if(self.OPTIONS[option_flag]):
 				return True
@@ -179,11 +211,11 @@ class BitStreamer(Thread):
 		self.__verbose_print(s)
 		return s
 
-	def __init_serial(self, BAUD_RATE, SERIAL_PORT):
+	def __init_serial(self, baud_rate, serial_port):
 		"""
 		Initialize the serial connection
 		"""
-		self.ser = serial.Serial(SERIAL_PORT, BAUD_RATE);
+		self.ser = serial.Serial(serial_port, baud_rate);
 
 	# Read in from serial (with a line delimiter)
 	def __readLine(self):
@@ -193,16 +225,6 @@ class BitStreamer(Thread):
 	def __readChar(self):
 		return self.ser.read()
 
-	# poll debug using csv
-	def __poll_debug_csv(self, debug_file='debug_profile.csv'):
-		csv_reader = CSVIterator(debug_file)
-		while True:
-			self.sensor_values = csv_reader.get_data()
-			self.__readyFlag = True
-
-			time.sleep(self.sample_period_s)
-			self.setSampleTime()
-
 	def __decode(self, data_raw):
 		values = self.__unpack(data_raw)
 		final_values = {}
@@ -210,14 +232,13 @@ class BitStreamer(Thread):
 		for i in range(len(self.values_index)):
 			final_values[self.values_index[i]] = values[i]
 
-		# Remove items from the dictionary we don't need
-		del final_values['checksum']
-		del final_values['packet_header']
-		del final_values['packet_ender']
-		del final_values['packet_id']
-
+		# Remove the descriptors, and print only the data
+		for key in self.packet_config['packet']['descriptors']
+			del final_values[key]
+			
 		if self.verbose:
 			 print final_values
+
 		return final_values
 
 	def __unpack(self, data_raw):

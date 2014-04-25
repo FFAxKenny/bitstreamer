@@ -1,0 +1,14 @@
+# Define the full packet here
+
+packet:
+    full:
+        packet_header: 'c'
+        packet_id: 'h'
+        sensor_1: 'f'
+        packet_ender: 'f'
+    descriptors: 
+        'packet_header', 
+        'packet_id', 
+        'packet_ender'
+config:
+    sample_period_ms: 25
