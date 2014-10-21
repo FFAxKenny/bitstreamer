@@ -28,13 +28,16 @@ class BitStreamer(Thread):
     # ==========================================================
 
     # -------------------------------------------------------
-    # Constructor
+    # Pesudo-constructor
     # -------------------------------------------------------
-    def __init__(self, debug_mode=False, options={}, baud_rate=9600, serial_port='/dev/ttyS6', sample_period_s='0.025'):
+    def __init__(self):
         Thread.__init__(self)
 
 
-    def initialize():
+    # - 
+    # Full constructor
+    # -
+    def initialize(self, debug_mode=False, options={}, baud_rate=9600, serial_port='/dev/ttyS6', sample_period_s='0.025'):
         self.__readyFlag = False
 
         self.__verbose = False          
@@ -70,9 +73,9 @@ class BitStreamer(Thread):
         return self.__readyFlag
 
     # Parses an unpack schema and spits out the size.
-    def getPacketSize(self, unpack_schema):
+    def parsePacketSize(self, unpack_schema):
         size = 0
-        self.verbose_print("Get packet size for " + str(unpack_schema))
+        # self.verbose_print("Get packet size for " + str(unpack_schema))
         for x in unpack_schema:
             if x is 'c':
                 size += 1
@@ -80,6 +83,9 @@ class BitStreamer(Thread):
                 size += 2
             elif x is 'f':
                 size += 4
+            else:
+                # Do nothing
+                pass
         return size
 
     def loadPacketConfig(self):

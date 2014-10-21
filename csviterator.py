@@ -1,4 +1,4 @@
-# A simple python class which iterates through a CSV file
+# A simple python class which infinately iterates through a CSV file
 import time
 import csv
 import pprint
@@ -30,6 +30,7 @@ class CSVIterator:
         return value
             
 if __name__ == "__main__":
+    ## Example Usage
     csv_reader = CSVIterator("debug_profile1.csv")
     while True:
         print csv_reader.get_data()
