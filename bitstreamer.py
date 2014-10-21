@@ -17,7 +17,7 @@ import csv
 import yaml
 import os
 
-from CSVIterator import CSVIterator
+from csviterator import CSVIterator
 from struct import *
 from threading import Thread 
 from datetime import datetime
@@ -82,7 +82,7 @@ class BitStreamer(Thread):
 
 	def loadPacketConfig(self):
 		self.packet_config = {}
-		with open('packet_kay.yaml') as config_file
+		with open('packet_kay.yaml') as config_file:
 			self.packet_config = yaml.load(config_file)
 
 	def getPacketIndex(self):
@@ -233,7 +233,7 @@ class BitStreamer(Thread):
 			final_values[self.values_index[i]] = values[i]
 
 		# Remove the descriptors, and print only the data
-		for key in self.packet_config['packet']['descriptors']
+		for key in self.packet_config['packet']['descriptors']:
 			del final_values[key]
 			
 		if self.verbose:
