@@ -4,10 +4,10 @@ import csv
 import pprint
 
 class CSVIterator:
-    def __init__(self, filename):
+    def __init__(self):
         pass
 
-    def initialize():
+    def initialize(filename):
         self.data = self.read_csv(filename)
         self.data_iter = 0
         self.data_len = len(self.data)
